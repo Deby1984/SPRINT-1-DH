@@ -1,0 +1,10 @@
+backend/target/
+frontend/node_modules/
+frontend/dist/
+backend/uploads/
+backend/data/
+backend/.m2/
+.idea/
+*.iml
+.tools/
+frontend/vite.log
