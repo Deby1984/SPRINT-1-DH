@@ -1,14 +1,76 @@
 package com.horizonte.config;
 
 import com.horizonte.product.*;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+
+import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
     @ExceptionHandler({DuplicateProductException.class, IllegalArgumentException.class})
-    ResponseEntity<Map<String,String>> badRequest(RuntimeException ex) { return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage())); }
+    ResponseEntity<ApiError> badRequest(RuntimeException ex, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, ex.getMessage(), request, Map.of());
+    }
+
     @ExceptionHandler(ProductNotFoundException.class)
-    ResponseEntity<Map<String,String>> notFound(ProductNotFoundException ex) { return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", ex.getMessage())); }
+    ResponseEntity<ApiError> notFound(ProductNotFoundException ex, HttpServletRequest request) {
+        return response(HttpStatus.NOT_FOUND, ex.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ResponseEntity<ApiError> validation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                fields.putIfAbsent(error.getField(), error.getDefaultMessage()));
+        return response(HttpStatus.BAD_REQUEST, "Hay datos inválidos en la solicitud.", request, fields);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> invalidParameter(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "El parámetro '" + ex.getName() + "' tiene un valor inválido.", request, Map.of());
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ResponseEntity<ApiError> missingParameter(MissingServletRequestParameterException ex, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "Falta el parámetro obligatorio '" + ex.getParameterName() + "'.", request, Map.of());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiError> unreadableBody(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        return response(HttpStatus.BAD_REQUEST, "El contenido de la solicitud no es válido.", request, Map.of());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> fileTooLarge(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return response(HttpStatus.PAYLOAD_TOO_LARGE, "Una o más imágenes superan el tamaño permitido.", request, Map.of());
+    }
+
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ApiError> unexpected(Exception ex, HttpServletRequest request) {
+        return response(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado.", request, Map.of());
+    }
+
+    private ResponseEntity<ApiError> response(
+            HttpStatus status,
+            String message,
+            HttpServletRequest request,
+            Map<String, String> fieldErrors) {
+        ApiError error = new ApiError(
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message,
+                request.getRequestURI(),
+                fieldErrors);
+        return ResponseEntity.status(status).body(error);
+    }
 }

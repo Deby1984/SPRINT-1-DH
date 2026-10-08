@@ -10,6 +10,8 @@ Horizonte es una aplicación de reservas de alojamientos. Este Sprint implementa
 - Validación de nombre único y mensajes de error comprensibles.
 - Listado administrativo paginado (máximo diez productos por página) y eliminación confirmada.
 - Datos de ejemplo, pruebas automatizadas y un plan de pruebas manuales.
+- API desacoplada de las entidades de persistencia mediante DTOs de respuesta y errores con formato uniforme.
+- Frontend organizado por páginas y componentes, con estados explícitos de carga, error y contenido vacío.
 
 ## Requisitos
 

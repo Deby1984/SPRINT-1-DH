@@ -12,3 +12,7 @@
 | CP-08 | Paginación | Tener más de 10 productos y abrir la lista. | Cada página contiene como máximo 10 filas; inicio, anterior y siguiente navegan correctamente. |
 | CP-09 | Panel | Abrir `/administracion` en desktop y en móvil. | Desktop muestra menú de alta/lista; móvil informa que el panel no está disponible. |
 | CP-10 | Eliminación | Pulsar `Eliminar producto`, cancelar y confirmar. | Cancelar no modifica datos; confirmar borra la fila y el producto ya no aparece. |
+| CP-11 | Detalle | Abrir un identificador de producto inexistente o interrumpir la API. | Se muestra un error claro y una acción para regresar; la pantalla no queda cargando indefinidamente. |
+| CP-12 | Catálogo | Abrir home o administración sin productos disponibles. | Se muestra un estado vacío claro en lugar de una grilla o tabla sin explicación. |
+| CP-13 | Alta | Intentar crear un producto adjuntando un archivo que no sea una imagen. | La API rechaza el archivo, responde con el formato de error común y no guarda el producto. |
+| CP-14 | API | Consultar un producto inexistente. | La API responde `404` con el formato de error común y un mensaje comprensible. |
