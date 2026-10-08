@@ -1,6 +1,7 @@
 package com.horizonte.config;
 
 import com.horizonte.product.*;
+import com.horizonte.user.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -9,13 +10,17 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
     @ExceptionHandler({DuplicateProductException.class, IllegalArgumentException.class})
     ResponseEntity<ApiError> badRequest(RuntimeException ex, HttpServletRequest request) {
         return response(HttpStatus.BAD_REQUEST, ex.getMessage(), request, Map.of());
@@ -24,6 +29,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ProductNotFoundException.class)
     ResponseEntity<ApiError> notFound(ProductNotFoundException ex, HttpServletRequest request) {
         return response(HttpStatus.NOT_FOUND, ex.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    ResponseEntity<ApiError> unauthorized(UnauthorizedException ex, HttpServletRequest request) {
+        return response(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    ResponseEntity<ApiError> forbidden(ForbiddenException ex, HttpServletRequest request) {
+        return response(HttpStatus.FORBIDDEN, ex.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -54,8 +69,14 @@ public class ApiExceptionHandler {
         return response(HttpStatus.PAYLOAD_TOO_LARGE, "Una o más imágenes superan el tamaño permitido.", request, Map.of());
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> conflict(DataIntegrityViolationException ex, HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, "No se puede eliminar porque el elemento está siendo utilizado.", request, Map.of());
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> unexpected(Exception ex, HttpServletRequest request) {
+        log.error("Error inesperado en {}", request.getRequestURI(), ex);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado.", request, Map.of());
     }
 

@@ -1,34 +1,34 @@
-# Horizonte - Sprint 1
+# Horizonte - Sprint 2
 
-Horizonte es una aplicación de reservas de alojamientos. Este Sprint implementa un catálogo público de estadías y un panel de administración para crear y eliminar productos.
+Horizonte es una aplicación responsive de reservas de alojamientos. El Sprint 2 incorpora cuentas de usuario, sesiones seguras, roles administrativos, categorías, características y filtros sobre el catálogo construido en el Sprint 1.
 
-## Qué incluye
+## Funcionalidades
 
-- Frontend React responsive, con identidad visual propia: header fijo, home, categorías, recomendaciones aleatorias, detalle con galería y footer.
-- API REST con Spring Boot, JPA e H2 persistente.
-- Alta de productos con nombre, descripción, categoría, ciudad, precio y una o más imágenes.
-- Validación de nombre único y mensajes de error comprensibles.
-- Listado administrativo paginado (máximo diez productos por página) y eliminación confirmada.
-- Datos de ejemplo, pruebas automatizadas y un plan de pruebas manuales.
-- API desacoplada de las entidades de persistencia mediante DTOs de respuesta y errores con formato uniforme.
-- Frontend organizado por páginas y componentes, con estados explícitos de carga, error y contenido vacío.
+- Registro con nombre, apellido, correo y contraseña validada.
+- Inicio y cierre de sesión; nombre e iniciales visibles en el encabezado.
+- Contraseñas almacenadas con BCrypt y autorización administrativa aplicada también en la API.
+- Gestión de usuarios: un administrador puede otorgar o quitar el rol administrativo.
+- Alta, edición, listado y eliminación de productos.
+- Gestión de categorías con título, descripción e imagen representativa.
+- Gestión de características con nombre e ícono; asociación múltiple a los productos.
+- Detalle público con bloque responsive de características.
+- Filtro por una o más categorías, contador de resultados y opción para limpiar filtros.
+- Estados de carga, error y contenido vacío, más pruebas automatizadas.
 
-## Requisitos
+La confirmación de registro por correo es una historia opcional del enunciado y no forma parte de esta entrega evaluable.
 
-- Java 21 o superior.
-- Maven 3.9 o superior.
-- Node.js 20 o superior.
+## Requisitos y ejecución
 
-## Ejecutar el proyecto
+- Java 21 o superior, Maven 3.9 o superior y Node.js 20 o superior.
 
-En una terminal, iniciar el backend:
+Backend:
 
 ```powershell
 cd backend
 mvn spring-boot:run
 ```
 
-En otra terminal, iniciar el frontend:
+Frontend, en otra terminal:
 
 ```powershell
 cd frontend
@@ -36,27 +36,40 @@ npm install
 npm run dev
 ```
 
-Abrir `http://localhost:5173`. La API queda disponible en `http://localhost:8080/api/products` y la consola H2 en `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:file:./data/horizonte`).
+Abrir `http://localhost:5173`. La API utiliza `http://localhost:8080` y H2 persiste en `backend/data/horizonte`.
 
-## Rutas
+## Acceso administrativo de demostración
+
+- Correo: `admin@horizonte.com`
+- Contraseña: `Horizonte123!`
+
+Este usuario se crea solamente si todavía no existe. Las cuentas registradas desde la web comienzan con rol `USER`.
+
+## Rutas principales
 
 | Ruta | Uso |
 | --- | --- |
-| `/` | Home con hasta 10 recomendaciones aleatorias. |
-| `/productos/:id` | Detalle y galería del alojamiento. |
-| `/administracion` | Menú del panel (desktop). |
-| `/administracion/productos/nuevo` | Alta de producto con carga de imágenes. |
-| `/administracion/productos` | Tabla de productos, paginación y eliminación. |
+| `/` | Catálogo y filtros por categorías. |
+| `/productos/:id` | Detalle, galería y características. |
+| `/registro` / `/login` | Registro e inicio de sesión. |
+| `/administracion` | Menú exclusivo para administradores. |
+| `/administracion/productos` | Lista, edición y eliminación de productos. |
+| `/administracion/categorias` | ABM de categorías. |
+| `/administracion/caracteristicas` | ABM de características. |
+| `/administracion/usuarios` | Gestión de roles. |
 
-## API
+## API resumida
 
-| Método | Endpoint | Descripción |
+| Método | Endpoint | Acceso |
 | --- | --- | --- |
-| `GET` | `/api/products?page=0&size=10` | Catálogo paginado. |
-| `GET` | `/api/products/random?limit=10` | Muestra aleatoria sin repetidos. |
-| `GET` | `/api/products/{id}` | Detalle de un producto. |
-| `POST` | `/api/products` | Alta `multipart/form-data`; campos `name`, `description`, `category`, `city`, `price`, `images`. |
-| `DELETE` | `/api/products/{id}` | Elimina el producto y sus imágenes cargadas. |
+| `POST` | `/api/auth/register`, `/api/auth/login`, `/api/auth/logout` | Público/sesión |
+| `GET` | `/api/auth/me` | Usuario autenticado |
+| `GET` | `/api/products/filter?categoryIds=1,2` | Público |
+| `GET` | `/api/products/{id}` | Público |
+| `POST`, `PUT`, `DELETE` | `/api/products` | Administrador |
+| `GET` | `/api/categories`, `/api/characteristics` | Público |
+| `POST`, `PUT`, `DELETE` | `/api/categories`, `/api/characteristics` | Administrador |
+| `GET`, `PATCH` | `/api/users` | Administrador |
 
 ## Verificación
 
@@ -68,4 +81,4 @@ cd ../frontend
 npm run build
 ```
 
-Ver [docs/plan-de-pruebas.md](docs/plan-de-pruebas.md) para los casos de aceptación del Sprint.
+El detalle de las pruebas manuales y su resultado está en [docs/plan-de-pruebas-sprint-2.md](docs/plan-de-pruebas-sprint-2.md).

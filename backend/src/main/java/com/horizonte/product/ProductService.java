@@ -1,5 +1,8 @@
 package com.horizonte.product;
 
+import com.horizonte.category.CategoryRepository;
+import com.horizonte.characteristic.Characteristic;
+import com.horizonte.characteristic.CharacteristicRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -16,10 +19,14 @@ import java.util.*;
 @Service
 public class ProductService {
     private final ProductRepository repository;
+    private final CategoryRepository categoryRepository;
+    private final CharacteristicRepository characteristicRepository;
     private final Path uploadDirectory;
 
-    public ProductService(ProductRepository repository, @org.springframework.beans.factory.annotation.Value("${app.upload-dir}") String uploadDirectory) {
+    public ProductService(ProductRepository repository, CategoryRepository categoryRepository, CharacteristicRepository characteristicRepository, @org.springframework.beans.factory.annotation.Value("${app.upload-dir}") String uploadDirectory) {
         this.repository = repository;
+        this.categoryRepository = categoryRepository;
+        this.characteristicRepository = characteristicRepository;
         this.uploadDirectory = Path.of(uploadDirectory).toAbsolutePath().normalize();
     }
 
@@ -37,19 +44,34 @@ public class ProductService {
         return repository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
     }
 
+    public List<Product> filter(List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) return repository.findAll(Sort.by("id").descending());
+        return repository.findDistinctByCategoryEntityIdInOrderByIdDesc(categoryIds);
+    }
+
     @Transactional
     public Product create(ProductRequest request, MultipartFile[] files) {
         if (repository.existsByNameIgnoreCase(request.name().trim())) {
             throw new DuplicateProductException(request.name());
         }
         Product product = new Product();
-        product.setName(request.name().trim());
-        product.setDescription(request.description().trim());
-        product.setCategory(request.category().trim());
-        product.setCity(request.city().trim());
-        product.setPrice(request.price());
+        apply(product, request);
         product.setImages(storeFiles(files));
         return repository.save(product);
+    }
+
+    @Transactional
+    public Product update(Long id, ProductRequest request, MultipartFile[] files) {
+        Product product = get(id);
+        repository.findByNameIgnoreCase(request.name().trim()).filter(other -> !other.getId().equals(id))
+                .ifPresent(other -> { throw new DuplicateProductException(request.name()); });
+        apply(product, request);
+        if (files != null && Arrays.stream(files).anyMatch(file -> !file.isEmpty())) {
+            List<String> previous = List.copyOf(product.getImages());
+            product.setImages(storeFiles(files));
+            previous.stream().filter(image -> image.startsWith("/uploads/")).forEach(this::deleteFileQuietly);
+        }
+        return product;
     }
 
     @Transactional
@@ -57,6 +79,19 @@ public class ProductService {
         Product product = get(id);
         product.getImages().stream().filter(image -> image.startsWith("/uploads/")).forEach(this::deleteFileQuietly);
         repository.delete(product);
+    }
+
+    private void apply(Product product, ProductRequest request) {
+        product.setName(request.name().trim());
+        product.setDescription(request.description().trim());
+        product.setCategoryEntity(categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new IllegalArgumentException("La categoría seleccionada no existe.")));
+        product.setCity(request.city().trim());
+        product.setPrice(request.price());
+        Set<Long> ids = request.characteristicIds() == null ? Set.of() : request.characteristicIds();
+        List<Characteristic> values = characteristicRepository.findAllById(ids);
+        if (values.size() != ids.size()) throw new IllegalArgumentException("Una de las características seleccionadas no existe.");
+        product.setCharacteristics(new LinkedHashSet<>(values));
     }
 
     private List<String> storeFiles(MultipartFile[] files) {

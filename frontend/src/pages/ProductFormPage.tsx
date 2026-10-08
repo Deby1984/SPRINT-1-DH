@@ -1,28 +1,19 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { categoriesApi, characteristicsApi, productsApi } from '../api'
 import { Layout } from '../components/layout/Layout'
-import { productsApi } from '../api'
+import { StatusMessage } from '../components/StatusMessage'
+import type { Category, Characteristic, Product } from '../types'
 import { errorMessage } from '../utils/product'
 
 export function ProductFormPage() {
-  const navigate = useNavigate()
-  const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setSaving(true)
-    setError('')
-    try {
-      const form = new FormData(event.currentTarget)
-      await productsApi.create(form)
-      navigate('/administracion/productos')
-    } catch (reason) {
-      setError(errorMessage(reason, 'No se pudo guardar.'))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return <Layout><section className="admin-page"><Link to="/administracion" className="text-link">← Administración</Link><p className="kicker">NUEVA ESTADÍA</p><h1>Agregar producto</h1><form onSubmit={submit} className="product-form"><label>Nombre<input name="name" required maxLength={120} placeholder="Ej. Casa Bruma" /></label><label>Categoría<select name="category" required defaultValue=""><option value="" disabled>Elegí una categoría</option><option>Cabañas</option><option>Casas</option><option>Hoteles</option><option>Departamentos</option><option>Estancias</option></select></label><label>Ciudad<input name="city" required placeholder="Ej. Bariloche" /></label><label>Precio por noche (ARS)<input name="price" required type="number" min="1" step="1" placeholder="120000" /></label><label className="full">Descripción<textarea name="description" required maxLength={1200} placeholder="Contá qué hace especial a esta estadía." rows={5} /></label><label className="full upload-label">Imágenes<input name="images" required type="file" accept="image/*" multiple /><span>Podés subir una o más imágenes (máx. 5 MB por archivo).</span></label>{error && <p className="form-error" role="alert">{error}</p>}<div className="form-actions"><Link to="/administracion" className="ghost dark">Cancelar</Link><button className="primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar producto'}</button></div></form></section></Layout>
+  const { id } = useParams(); const navigate = useNavigate(); const editing = Boolean(id)
+  const [product, setProduct] = useState<Product | null>(null); const [categories, setCategories] = useState<Category[]>([]); const [characteristics, setCharacteristics] = useState<Characteristic[]>([])
+  const [error, setError] = useState(''); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false)
+  useEffect(() => { Promise.all([categoriesApi.list(), characteristicsApi.list(), id ? productsApi.get(id) : Promise.resolve(null)])
+    .then(([nextCategories, nextCharacteristics, nextProduct]) => { setCategories(nextCategories); setCharacteristics(nextCharacteristics); setProduct(nextProduct) })
+    .catch(reason => setError(errorMessage(reason, 'No se pudo preparar el formulario.'))).finally(() => setLoading(false)) }, [id])
+  async function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); setSaving(true); setError(''); try { const form = new FormData(event.currentTarget); if (editing && id) await productsApi.update(id, form); else await productsApi.create(form); navigate('/administracion/productos') } catch (reason) { setError(errorMessage(reason, 'No se pudo guardar.')) } finally { setSaving(false) } }
+  if (loading) return <Layout><StatusMessage>Cargando formulario…</StatusMessage></Layout>
+  return <Layout><section className="admin-page"><Link to="/administracion/productos" className="text-link">← Lista de productos</Link><p className="kicker">{editing ? 'EDITAR ESTADÍA' : 'NUEVA ESTADÍA'}</p><h1>{editing ? 'Editar producto' : 'Agregar producto'}</h1>{error && !categories.length ? <StatusMessage kind="error">{error}</StatusMessage> : <form onSubmit={submit} className="product-form"><label>Nombre<input name="name" required maxLength={120} defaultValue={product?.name} /></label><label>Categoría<select name="categoryId" required defaultValue={product?.categoryId ?? ''}><option value="" disabled>Elegí una categoría</option>{categories.map(category => <option value={category.id} key={category.id}>{category.title}</option>)}</select></label><label>Ciudad<input name="city" required maxLength={100} defaultValue={product?.city} /></label><label>Precio por noche (ARS)<input name="price" required type="number" min="1" step="1" defaultValue={product?.price} /></label><label className="full">Descripción<textarea name="description" required maxLength={1200} rows={5} defaultValue={product?.description} /></label><fieldset className="full checkbox-field"><legend>Características (elegí una o más)</legend>{characteristics.map(item => <label key={item.id}><input type="checkbox" name="characteristicIds" value={item.id} defaultChecked={product?.characteristics.some(value => value.id === item.id)} /><span>{item.icon} {item.name}</span></label>)}</fieldset><label className="full upload-label">Imágenes<input name="images" required={!editing} type="file" accept="image/*" multiple /><span>{editing ? 'Dejalas sin seleccionar para conservar las imágenes actuales.' : 'Subí una o más imágenes (máx. 5 MB por archivo).'}</span></label>{error && <p className="form-error" role="alert">{error}</p>}<div className="form-actions"><Link to="/administracion/productos" className="ghost dark">Cancelar</Link><button className="primary" disabled={saving}>{saving ? 'Guardando…' : 'Guardar producto'}</button></div></form>}</section></Layout>
 }
