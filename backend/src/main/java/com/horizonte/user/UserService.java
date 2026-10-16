@@ -22,6 +22,10 @@ public class UserService {
     }
     public AppUser get(Long id) { return repository.findById(id).orElseThrow(() -> new UnauthorizedException("La sesión ya no es válida.")); }
     public AppUser getByEmail(String email) { return repository.findByEmailIgnoreCase(email).orElseThrow(() -> new UnauthorizedException("El usuario autenticado ya no existe.")); }
+    @Transactional public void revokeTokens(String email) {
+        AppUser user = getByEmail(email);
+        user.revokeTokens();
+    }
     public List<AppUser> list() { return repository.findAll(Sort.by("lastName", "firstName")); }
     @Transactional public AppUser changeRole(Long id, Role role, Long actingUserId) {
         AppUser user = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("El usuario no existe."));

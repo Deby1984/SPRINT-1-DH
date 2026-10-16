@@ -10,6 +10,7 @@ public class AppUser {
     @Column(nullable=false, length=160) private String email;
     @Column(nullable=false, length=100) private String passwordHash;
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=10) private Role role = Role.USER;
+    @Column(nullable=false, columnDefinition = "bigint default 0") private long tokenVersion;
     public Long getId() { return id; }
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
@@ -21,4 +22,6 @@ public class AppUser {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+    public long getTokenVersion() { return tokenVersion; }
+    public void revokeTokens() { tokenVersion++; }
 }

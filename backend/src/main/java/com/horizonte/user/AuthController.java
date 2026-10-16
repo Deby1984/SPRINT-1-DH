@@ -28,6 +28,7 @@ public class AuthController {
         }
     }
     @GetMapping("/me") public UserResponse me(Authentication authentication) { return UserResponse.from(service.getByEmail(authentication.getName())); }
-    @PostMapping("/logout") @ResponseStatus(HttpStatus.NO_CONTENT) public void logout() { }
+    @PostMapping("/logout") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(Authentication authentication) { service.revokeTokens(authentication.getName()); }
     private AuthResponse response(AppUser user) { return new AuthResponse(jwtService.generate(user), UserResponse.from(user)); }
 }

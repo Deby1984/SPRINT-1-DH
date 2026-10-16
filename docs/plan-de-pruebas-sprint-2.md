@@ -8,7 +8,11 @@
 | Correo repetido | Registrar dos veces el mismo correo. | La API rechaza la segunda cuenta con un mensaje claro. | Aprobado (automatizado) |
 | Login JWT | Ingresar credenciales válidas. | Spring Security autentica y la API devuelve un JWT firmado. | Aprobado (automatizado) |
 | Credenciales incorrectas | Ingresar una contraseña inválida. | Spring Security rechaza el acceso con estado 401 y un mensaje uniforme. | Aprobado (automatizado) |
-| Cierre de sesión | Elegir “Cerrar sesión” desde el encabezado. | El token se elimina del navegador y el panel deja de estar disponible. | Aprobado |
+| Cierre de sesión | Elegir “Cerrar sesión” desde el encabezado e intentar reutilizar una copia del JWT. | El token se elimina del navegador, queda invalidado en el servidor y su reutilización devuelve 401. | Aprobado (automatizado y prueba real) |
+| JWT alterado o vencido | Acceder a una ruta protegida con un token modificado o expirado. | Spring Security rechaza la solicitud con estado 401. | Aprobado (automatizado) |
+| Limpieza automática ante 401 | Mantener abierta una ruta administrativa y provocar que una solicitud reciba 401. | El frontend elimina el JWT, actualiza el usuario a estado anónimo y la ruta protegida redirige al login. | Aprobado (automatizado) |
+| API sin sesión HTTP | Iniciar y cerrar sesión, inspeccionando la solicitud, las cookies y la sesión del servidor. | No se crea `JSESSIONID` ni una sesión HTTP. | Aprobado (automatizado y prueba real) |
+| Consola H2 no expuesta | Solicitar `/h2-console/` sin autenticación. | La ruta no figura entre los recursos públicos y devuelve 401. | Aprobado (automatizado y prueba real) |
 | Protección administrativa | Intentar crear, editar o eliminar sin JWT o con rol USER. | Spring Security devuelve 401/403 antes de ejecutar el controlador. | Aprobado (automatizado) |
 | Gestión de roles | Desde Usuarios, cambiar una cuenta USER a ADMIN y viceversa. | El permiso se actualiza; el administrador actual no puede quitarse su propio rol. | Aprobado |
 | Categorías | Crear, editar y eliminar una categoría no utilizada. | La lista se actualiza. No se eliminan categorías con productos asociados. | Aprobado |
@@ -19,7 +23,8 @@
 | Filtro simple | Elegir “Cabañas”. | Se muestran 4 de 11 alojamientos y aparece “Limpiar filtros”. | Aprobado |
 | Filtro múltiple | Elegir dos categorías. | Se muestran productos pertenecientes a cualquiera de las seleccionadas. | Aprobado |
 | Responsive | Revisar home, detalle, autenticación y administración en móvil/tablet/desktop. | No hay contenido bloqueado y los controles se reorganizan. | Aprobado |
-| Backend | Ejecutar `mvn test`. | 11 pruebas sin errores, incluidas 4 de integración de seguridad. | Aprobado |
+| Backend | Ejecutar `mvn test`. | 14 pruebas sin errores, incluidas 7 pruebas de integración de seguridad. | Aprobado |
+| Frontend: sesión inválida | Ejecutar `npm test`. | Se comprueba que un 401 borra y notifica la sesión inválida, sin borrar un token nuevo por una respuesta tardía. | Aprobado (2 pruebas automatizadas) |
 | Frontend | Ejecutar `npm run build`. | TypeScript y Vite terminan sin errores. | Aprobado |
 
 ## Observaciones
@@ -27,4 +32,6 @@
 - La confirmación por correo corresponde a una historia opcional no evaluable.
 - Las imágenes de categorías se administran mediante URL; las imágenes de productos se cargan como archivos.
 - La API es stateless, no crea sesiones HTTP y centraliza la autorización en Spring Security.
-- Las credenciales administrativas y la clave JWT se reciben exclusivamente mediante variables de entorno.
+- Las credenciales administrativas se reciben mediante variables de entorno y los archivos `.env` no se versionan.
+- Para una ejecución normal, `APP_JWT_SECRET` se recibe mediante una variable de entorno y nunca está escrita en el código. Solo en desarrollo, si falta, se genera una clave aleatoria temporal en memoria.
+- La autenticación es stateless: cerrar sesión incrementa la versión de seguridad del usuario para revocar los JWT anteriores sin crear una sesión HTTP.

@@ -1,17 +1,28 @@
 import type { AuthResult, Category, Characteristic, Product, ProductFilter, ProductPage, User } from './types'
 
 const TOKEN_KEY = 'horizonte.jwt'
+export const AUTH_INVALIDATED_EVENT = 'horizonte:auth-invalidated'
+
 export const tokenStore = {
   get: () => sessionStorage.getItem(TOKEN_KEY),
   set: (token: string) => sessionStorage.setItem(TOKEN_KEY, token),
   clear: () => sessionStorage.removeItem(TOKEN_KEY)
 }
 
-function request(input: RequestInfo | URL, init: RequestInit = {}) {
+async function request(input: RequestInfo | URL, init: RequestInit = {}) {
   const headers = new Headers(init.headers)
   const token = tokenStore.get()
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  return fetch(input, { ...init, headers })
+  const result = await fetch(input, { ...init, headers })
+
+  // Un 401 invalida solamente el token usado por esta solicitud. La
+  // comparación evita que una respuesta antigua borre una sesión nueva.
+  if (result.status === 401 && token && tokenStore.get() === token) {
+    tokenStore.clear()
+    window.dispatchEvent(new Event(AUTH_INVALIDATED_EVENT))
+  }
+
+  return result
 }
 
 async function response<T>(pending: Promise<Response>): Promise<T> {
