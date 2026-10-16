@@ -7,14 +7,17 @@ import com.horizonte.user.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import java.math.BigDecimal;
 import java.util.*;
 
 @Configuration
 public class DataSeeder {
     @Bean CommandLineRunner seedData(ProductRepository products, CategoryRepository categories,
-            CharacteristicRepository characteristics, UserRepository users) {
+            CharacteristicRepository characteristics, UserRepository users, PasswordEncoder encoder,
+            @Value("${app.admin.email:}") String adminEmail,
+            @Value("${app.admin.password:}") String adminPassword) {
         return args -> {
             Map<String, Category> categoryMap = new LinkedHashMap<>();
             categoryMap.put("Cabañas", category(categories, "Cabañas", "Refugios entre montañas, bosques y lagos.", "https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?auto=format&fit=crop&w=900&q=80"));
@@ -53,9 +56,11 @@ public class DataSeeder {
                 });
             }
 
-            if (!users.existsByEmailIgnoreCase("admin@horizonte.com")) {
-                AppUser admin = new AppUser(); admin.setFirstName("Equipo"); admin.setLastName("Horizonte"); admin.setEmail("admin@horizonte.com");
-                admin.setPasswordHash(new BCryptPasswordEncoder().encode("Horizonte123!")); admin.setRole(Role.ADMIN); users.save(admin);
+            if (!adminEmail.isBlank() && !adminPassword.isBlank()) {
+                String email = adminEmail.trim().toLowerCase();
+                AppUser admin = users.findByEmailIgnoreCase(email).orElseGet(AppUser::new);
+                admin.setFirstName("Equipo"); admin.setLastName("Horizonte"); admin.setEmail(email);
+                admin.setPasswordHash(encoder.encode(adminPassword)); admin.setRole(Role.ADMIN); users.save(admin);
             }
         };
     }

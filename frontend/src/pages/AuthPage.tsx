@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { authApi } from '../api'
+import { authApi, tokenStore } from '../api'
 import { useAuth } from '../auth'
 import { Layout } from '../components/layout/Layout'
 import { errorMessage } from '../utils/product'
@@ -16,9 +16,11 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
     event.preventDefault(); setSaving(true); setError('')
     const form = new FormData(event.currentTarget)
     try {
-      const nextUser = mode === 'login'
+      const result = mode === 'login'
         ? await authApi.login({ email: String(form.get('email')), password: String(form.get('password')) })
         : await authApi.register({ firstName: String(form.get('firstName')), lastName: String(form.get('lastName')), email: String(form.get('email')), password: String(form.get('password')) })
+      tokenStore.set(result.token)
+      const nextUser = result.user
       setUser(nextUser)
       const requested = (location.state as { from?: string } | null)?.from
       navigate(requested ?? (nextUser.role === 'ADMIN' ? '/administracion' : '/'), { replace: true })

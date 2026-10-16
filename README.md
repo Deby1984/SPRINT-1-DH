@@ -1,12 +1,13 @@
 # Horizonte - Sprint 2
 
-Horizonte es una aplicación responsive de reservas de alojamientos. El Sprint 2 incorpora cuentas de usuario, sesiones seguras, roles administrativos, categorías, características y filtros sobre el catálogo construido en el Sprint 1.
+Horizonte es una aplicación responsive de reservas de alojamientos. El Sprint 2 incorpora cuentas de usuario, autenticación JWT, roles administrativos, categorías, características y filtros sobre el catálogo construido en el Sprint 1.
 
 ## Funcionalidades
 
 - Registro con nombre, apellido, correo y contraseña validada.
 - Inicio y cierre de sesión; nombre e iniciales visibles en el encabezado.
-- Contraseñas almacenadas con BCrypt y autorización administrativa aplicada también en la API.
+- Autenticación stateless con Spring Security y tokens JWT enviados como `Bearer`.
+- Contraseñas almacenadas con BCrypt y autorización centralizada por rol en `SecurityFilterChain`.
 - Gestión de usuarios: un administrador puede otorgar o quitar el rol administrativo.
 - Alta, edición, listado y eliminación de productos.
 - Gestión de categorías con título, descripción e imagen representativa.
@@ -25,6 +26,9 @@ Backend:
 
 ```powershell
 cd backend
+$env:APP_ADMIN_EMAIL="admin@horizonte.com"
+$env:APP_ADMIN_PASSWORD="elegir-una-clave-segura"
+$env:APP_JWT_SECRET="elegir-una-clave-aleatoria-de-al-menos-32-caracteres"
 mvn spring-boot:run
 ```
 
@@ -38,12 +42,15 @@ npm run dev
 
 Abrir `http://localhost:5173`. La API utiliza `http://localhost:8080` y H2 persiste en `backend/data/horizonte`.
 
-## Acceso administrativo de demostración
+## Configuración segura
 
-- Correo: `admin@horizonte.com`
-- Contraseña: `Horizonte123!`
+El correo, la contraseña administrativa y la clave de firma JWT no están incluidos en el código. Se leen desde `APP_ADMIN_EMAIL`, `APP_ADMIN_PASSWORD` y `APP_JWT_SECRET`. El archivo `backend/.env.example` documenta los nombres esperados sin contener secretos reales.
 
-Este usuario se crea solamente si todavía no existe. Las cuentas registradas desde la web comienzan con rol `USER`.
+Al iniciar el backend con las variables anteriores se crea o actualiza el usuario administrador configurado. Las cuentas registradas desde la web comienzan con rol `USER`.
+
+Si `APP_JWT_SECRET` no está definida, el backend genera una clave temporal aleatoria para desarrollo. Los tokens emitidos dejan de ser válidos al reiniciar. En una entrega o despliegue debe configurarse siempre una clave estable de al menos 32 caracteres.
+
+La API no crea sesiones HTTP y aplica `SessionCreationPolicy.STATELESS`. CSRF está deshabilitado porque el token se envía explícitamente en el encabezado `Authorization` y no mediante cookies automáticas. El frontend conserva el token solamente durante la pestaña actual mediante `sessionStorage`.
 
 ## Rutas principales
 
@@ -62,8 +69,8 @@ Este usuario se crea solamente si todavía no existe. Las cuentas registradas de
 
 | Método | Endpoint | Acceso |
 | --- | --- | --- |
-| `POST` | `/api/auth/register`, `/api/auth/login`, `/api/auth/logout` | Público/sesión |
-| `GET` | `/api/auth/me` | Usuario autenticado |
+| `POST` | `/api/auth/register`, `/api/auth/login` | Público; devuelve JWT |
+| `GET`, `POST` | `/api/auth/me`, `/api/auth/logout` | Bearer JWT |
 | `GET` | `/api/products/filter?categoryIds=1,2` | Público |
 | `GET` | `/api/products/{id}` | Público |
 | `POST`, `PUT`, `DELETE` | `/api/products` | Administrador |

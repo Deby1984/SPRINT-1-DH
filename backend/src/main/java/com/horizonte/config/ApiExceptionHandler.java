@@ -36,11 +36,6 @@ public class ApiExceptionHandler {
         return response(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, Map.of());
     }
 
-    @ExceptionHandler(ForbiddenException.class)
-    ResponseEntity<ApiError> forbidden(ForbiddenException ex, HttpServletRequest request) {
-        return response(HttpStatus.FORBIDDEN, ex.getMessage(), request, Map.of());
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiError> validation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> fields = new LinkedHashMap<>();

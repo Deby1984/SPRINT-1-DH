@@ -4,3 +4,4 @@ export type Product = { id: number; name: string; description: string; categoryI
 export type ProductPage = { content: Product[]; totalPages: number; totalElements: number; number: number; size: number }
 export type ProductFilter = { products: Product[]; filteredCount: number; totalCount: number }
 export type User = { id: number; firstName: string; lastName: string; email: string; role: 'USER' | 'ADMIN' }
+export type AuthResult = { token: string; user: User }
