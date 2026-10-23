@@ -16,6 +16,14 @@ Horizonte es una aplicación responsive de reservas de alojamientos. El Sprint 2
 - Filtro por una o más categorías, contador de resultados y opción para limpiar filtros.
 - Estados de carga, error y contenido vacío, más pruebas automatizadas.
 
+## Correcciones de la reentrega
+
+- La galería del detalle se adapta de una a cinco imágenes sin superponerse con la descripción; en pantallas pequeñas pasa a una sola columna.
+- Los formularios de acceso, registro, productos, categorías y características validan los datos en React antes de enviarlos y muestran junto a cada campo los errores devueltos por la API.
+- Las URL aceptan únicamente `http` o `https`, los textos compuestos solo por espacios se rechazan y los productos requieren precio válido, categoría, imagen inicial y al menos una característica.
+- Las acciones de guardar y eliminar quedan bloqueadas mientras hay una solicitud en curso para evitar operaciones duplicadas.
+- Login y registro mantienen estados independientes: al cambiar de pantalla no se conservan datos ni errores del formulario anterior.
+
 La confirmación de registro por correo es una historia opcional del enunciado y no forma parte de esta entrega evaluable.
 
 ## Requisitos y ejecución

@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -85,6 +86,39 @@ class SecurityIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Categoría actualizada"));
         mvc.perform(delete("/api/categories/{id}", categoryId).header("Authorization", bearer(adminToken)))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test void invalidCategoryFieldsReturnSpecificValidationErrors() throws Exception {
+        String adminToken = jwt.generate(admin);
+
+        mvc.perform(post("/api/categories").header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"   \",\"description\":\"  \",\"imageUrl\":\"javascript:alert(1)\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Hay datos inválidos en la solicitud."))
+                .andExpect(jsonPath("$.fieldErrors.title").value("El título es obligatorio."))
+                .andExpect(jsonPath("$.fieldErrors.description").value("La descripción es obligatoria."))
+                .andExpect(jsonPath("$.fieldErrors.imageUrl").value("La URL de la imagen debe ser una dirección HTTP o HTTPS válida."));
+    }
+
+    @Test void invalidProductFieldsReturnSpecificValidationErrors() throws Exception {
+        String adminToken = jwt.generate(admin);
+        MockMultipartFile image = new MockMultipartFile(
+                "images", "alojamiento.jpg", MediaType.IMAGE_JPEG_VALUE, "imagen".getBytes());
+
+        mvc.perform(multipart("/api/products").file(image)
+                        .header("Authorization", bearer(adminToken))
+                        .param("name", "   ")
+                        .param("description", "  ")
+                        .param("categoryId", "1")
+                        .param("city", "\t")
+                        .param("price", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.name").value("El nombre es obligatorio."))
+                .andExpect(jsonPath("$.fieldErrors.description").value("La descripción es obligatoria."))
+                .andExpect(jsonPath("$.fieldErrors.city").value("La ciudad es obligatoria."))
+                .andExpect(jsonPath("$.fieldErrors.price").value("El precio debe ser de al menos 0,01."))
+                .andExpect(jsonPath("$.fieldErrors.characteristicIds").value("Seleccioná al menos una característica."));
     }
 
     @Test void loginIsHandledBySpringSecurityAndReturnsAJwt() throws Exception {

@@ -5,3 +5,4 @@ export type ProductPage = { content: Product[]; totalPages: number; totalElement
 export type ProductFilter = { products: Product[]; filteredCount: number; totalCount: number }
 export type User = { id: number; firstName: string; lastName: string; email: string; role: 'USER' | 'ADMIN' }
 export type AuthResult = { token: string; user: User }
+export type FieldErrors = Record<string, string>

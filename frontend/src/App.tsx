@@ -26,8 +26,8 @@ export default function App() {
   return <Routes>
     <Route path="/" element={<HomePage />} />
     <Route path="/productos/:id" element={<DetailPage />} />
-    <Route path="/registro" element={<AuthPage mode="register" />} />
-    <Route path="/login" element={<AuthPage mode="login" />} />
+    <Route path="/registro" element={<AuthPage key="register" mode="register" />} />
+    <Route path="/login" element={<AuthPage key="login" mode="login" />} />
     <Route path="/administracion" element={admin(<AdminPage />)} />
     <Route path="/administracion/productos/nuevo" element={admin(<ProductFormPage />)} />
     <Route path="/administracion/productos/:id/editar" element={admin(<ProductFormPage />)} />

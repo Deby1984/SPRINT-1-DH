@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AUTH_INVALIDATED_EVENT, authApi, tokenStore } from './api'
+import { ApiError, AUTH_INVALIDATED_EVENT, authApi, tokenStore } from './api'
 
 function unauthorized() {
   return new Response(JSON.stringify({ message: 'La sesión ya no es válida.' }), {
@@ -44,5 +44,61 @@ describe('invalidación global de autenticación', () => {
     expect(tokenStore.get()).toBe('token-nuevo')
     expect(listener).not.toHaveBeenCalled()
     window.removeEventListener(AUTH_INVALIDATED_EVENT, listener)
+  })
+})
+
+describe('errores de la API', () => {
+  afterEach(() => {
+    sessionStorage.clear()
+    vi.unstubAllGlobals()
+  })
+
+  it('conserva el estado, el mensaje y los errores por campo del backend', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      status: 400,
+      message: 'Hay datos inválidos en la solicitud.',
+      fieldErrors: {
+        email: 'debe ser una dirección de correo electrónico con formato correcto',
+        password: 'el tamaño debe estar entre 8 y 72',
+      },
+    }), { status: 400, headers: { 'Content-Type': 'application/json' } })))
+
+    const pending = authApi.register({ firstName: 'Ana', lastName: 'Paz', email: 'mal', password: 'corta' })
+
+    await expect(pending).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 400,
+      message: 'Hay datos inválidos en la solicitud.',
+      fieldErrors: {
+        email: 'debe ser una dirección de correo electrónico con formato correcto',
+        password: 'el tamaño debe estar entre 8 y 72',
+      },
+    })
+  })
+
+  it('crea un ApiError seguro cuando la respuesta no contiene JSON válido', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('error', { status: 503 })))
+
+    const pending = authApi.login({ email: 'ana@example.com', password: 'segura123' })
+
+    await expect(pending).rejects.toEqual(new ApiError(503, 'Ocurrió un error inesperado.'))
+  })
+
+  it('descarta valores de fieldErrors que no sean texto', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      status: 422,
+      message: 'Error de validación',
+      fieldErrors: { email: 'Correo inválido', price: 123, images: null },
+    }), { status: 400, headers: { 'Content-Type': 'application/json' } })))
+
+    let error: unknown
+    try {
+      await authApi.login({ email: 'mal', password: 'segura123' })
+    } catch (reason) {
+      error = reason
+    }
+
+    expect(error).toBeInstanceOf(ApiError)
+    expect(error).toMatchObject({ status: 422, fieldErrors: { email: 'Correo inválido' } })
   })
 })

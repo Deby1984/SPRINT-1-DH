@@ -1,4 +1,4 @@
-import type { AuthResult, Category, Characteristic, Product, ProductFilter, ProductPage, User } from './types'
+import type { AuthResult, Category, Characteristic, FieldErrors, Product, ProductFilter, ProductPage, User } from './types'
 
 const TOKEN_KEY = 'horizonte.jwt'
 export const AUTH_INVALIDATED_EVENT = 'horizonte:auth-invalidated'
@@ -7,6 +7,36 @@ export const tokenStore = {
   get: () => sessionStorage.getItem(TOKEN_KEY),
   set: (token: string) => sessionStorage.setItem(TOKEN_KEY, token),
   clear: () => sessionStorage.removeItem(TOKEN_KEY)
+}
+
+export class ApiError extends Error {
+  readonly status: number
+  readonly fieldErrors: FieldErrors
+
+  constructor(status: number, message: string, fieldErrors: FieldErrors = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.fieldErrors = fieldErrors
+  }
+}
+
+export function isApiError(reason: unknown): reason is ApiError {
+  return reason instanceof ApiError
+}
+
+function errorBody(value: unknown): { status?: number; message?: string; fieldErrors: FieldErrors } {
+  if (!value || typeof value !== 'object') return { fieldErrors: {} }
+  const body = value as Record<string, unknown>
+  const status = typeof body.status === 'number' && Number.isFinite(body.status) ? body.status : undefined
+  const message = typeof body.message === 'string' && body.message.trim() ? body.message : undefined
+  const fieldErrors: FieldErrors = {}
+  if (body.fieldErrors && typeof body.fieldErrors === 'object' && !Array.isArray(body.fieldErrors)) {
+    for (const [field, messageValue] of Object.entries(body.fieldErrors as Record<string, unknown>)) {
+      if (typeof messageValue === 'string') fieldErrors[field] = messageValue
+    }
+  }
+  return { status, message, fieldErrors }
 }
 
 async function request(input: RequestInfo | URL, init: RequestInit = {}) {
@@ -28,8 +58,12 @@ async function request(input: RequestInfo | URL, init: RequestInit = {}) {
 async function response<T>(pending: Promise<Response>): Promise<T> {
   const result = await pending
   if (!result.ok) {
-    const body = await result.json().catch(() => ({ message: 'Ocurrió un error inesperado.' }))
-    throw new Error(body.message ?? 'Ocurrió un error inesperado.')
+    const parsed = errorBody(await result.json().catch(() => null))
+    throw new ApiError(
+      parsed.status ?? result.status,
+      parsed.message ?? 'Ocurrió un error inesperado.',
+      parsed.fieldErrors,
+    )
   }
   return result.status === 204 ? undefined as T : result.json() as Promise<T>
 }
