@@ -41,7 +41,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> writeError(response, 401, "Debés iniciar sesión para continuar."))
-                        .accessDeniedHandler((request, response, exception) -> writeError(response, 403, "No tenés permisos de administrador.")))
+                        .accessDeniedHandler((request, response, exception) -> writeError(response, 403, "No tenés permisos para realizar esta acción.")))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()

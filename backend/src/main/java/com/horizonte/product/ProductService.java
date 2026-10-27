@@ -3,6 +3,10 @@ package com.horizonte.product;
 import com.horizonte.category.CategoryRepository;
 import com.horizonte.characteristic.Characteristic;
 import com.horizonte.characteristic.CharacteristicRepository;
+import com.horizonte.favorite.FavoriteRepository;
+import com.horizonte.reservation.ReservationRepository;
+import com.horizonte.reservation.ReservationService;
+import com.horizonte.review.ReviewRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -15,18 +19,35 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.time.LocalDate;
 
 @Service
 public class ProductService {
     private final ProductRepository repository;
     private final CategoryRepository categoryRepository;
     private final CharacteristicRepository characteristicRepository;
+    private final ReservationService reservationService;
+    private final ReservationRepository reservationRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final ReviewRepository reviewRepository;
     private final Path uploadDirectory;
 
-    public ProductService(ProductRepository repository, CategoryRepository categoryRepository, CharacteristicRepository characteristicRepository, @org.springframework.beans.factory.annotation.Value("${app.upload-dir}") String uploadDirectory) {
+    public ProductService(
+            ProductRepository repository,
+            CategoryRepository categoryRepository,
+            CharacteristicRepository characteristicRepository,
+            ReservationService reservationService,
+            ReservationRepository reservationRepository,
+            FavoriteRepository favoriteRepository,
+            ReviewRepository reviewRepository,
+            @org.springframework.beans.factory.annotation.Value("${app.upload-dir}") String uploadDirectory) {
         this.repository = repository;
         this.categoryRepository = categoryRepository;
         this.characteristicRepository = characteristicRepository;
+        this.reservationService = reservationService;
+        this.reservationRepository = reservationRepository;
+        this.favoriteRepository = favoriteRepository;
+        this.reviewRepository = reviewRepository;
         this.uploadDirectory = Path.of(uploadDirectory).toAbsolutePath().normalize();
     }
 
@@ -47,6 +68,20 @@ public class ProductService {
     public List<Product> filter(List<Long> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) return repository.findAll(Sort.by("id").descending());
         return repository.findDistinctByCategoryEntityIdInOrderByIdDesc(categoryIds);
+    }
+
+    public List<String> cities(String query) {
+        String value = query == null ? "" : query.trim();
+        if (value.length() > 100) throw new IllegalArgumentException("La búsqueda de ciudad es demasiado larga.");
+        return repository.findCitySuggestions(value, PageRequest.of(0, 10));
+    }
+
+    public List<Product> search(String city, LocalDate checkIn, LocalDate checkOut, List<Long> categoryIds) {
+        reservationService.validateSearchDates(checkIn, checkOut);
+        String normalizedCity = city == null ? "" : city.trim();
+        if (normalizedCity.length() > 100) throw new IllegalArgumentException("La ciudad no puede superar los 100 caracteres.");
+        List<Long> ids = categoryIds == null || categoryIds.isEmpty() ? List.of(-1L) : categoryIds;
+        return repository.search(normalizedCity, checkIn, checkOut, categoryIds != null && !categoryIds.isEmpty(), ids);
     }
 
     @Transactional
@@ -77,6 +112,9 @@ public class ProductService {
     @Transactional
     public void delete(Long id) {
         Product product = get(id);
+        if (reservationRepository.existsByProductId(id)) throw new ProductInUseException(id);
+        favoriteRepository.deleteAllByProductId(id);
+        reviewRepository.deleteAllByProductId(id);
         product.getImages().stream().filter(image -> image.startsWith("/uploads/")).forEach(this::deleteFileQuietly);
         repository.delete(product);
     }
@@ -88,6 +126,9 @@ public class ProductService {
                 .orElseThrow(() -> new IllegalArgumentException("La categoría seleccionada no existe.")));
         product.setCity(request.city().trim());
         product.setPrice(request.price());
+        product.setHouseRules(request.houseRules().trim());
+        product.setHealthAndSafety(request.healthAndSafety().trim());
+        product.setCancellationPolicy(request.cancellationPolicy().trim());
         Set<Long> ids = request.characteristicIds() == null ? Set.of() : request.characteristicIds();
         List<Characteristic> values = characteristicRepository.findAllById(ids);
         if (values.size() != ids.size()) throw new IllegalArgumentException("Una de las características seleccionadas no existe.");

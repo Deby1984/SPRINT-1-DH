@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -20,6 +21,16 @@ public class ProductController {
     @GetMapping("/filter") public ProductFilterResponse filter(@RequestParam(required = false) List<Long> categoryIds) {
         List<ProductResponse> products = service.filter(categoryIds).stream().map(ProductResponse::from).toList();
         return new ProductFilterResponse(products, products.size(), service.list(0, 1).getTotalElements());
+    }
+    @GetMapping("/cities") public List<String> cities(@RequestParam(defaultValue = "") String query) {
+        return service.cities(query);
+    }
+    @GetMapping("/search") public List<ProductResponse> search(
+            @RequestParam(defaultValue = "") String city,
+            @RequestParam(required = false) LocalDate checkIn,
+            @RequestParam(required = false) LocalDate checkOut,
+            @RequestParam(required = false) List<Long> categoryIds) {
+        return service.search(city, checkIn, checkOut, categoryIds).stream().map(ProductResponse::from).toList();
     }
     @GetMapping("/{id}") public ProductResponse get(@PathVariable Long id) { return ProductResponse.from(service.get(id)); }
     @PostMapping(consumes = "multipart/form-data") @ResponseStatus(HttpStatus.CREATED)

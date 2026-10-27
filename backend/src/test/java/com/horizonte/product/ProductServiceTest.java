@@ -28,7 +28,7 @@ class ProductServiceTest {
         ProductRepository repository = mock(ProductRepository.class);
         when(repository.existsByNameIgnoreCase("Casa Bruma")).thenReturn(true);
         ProductService service = service(repository);
-        ProductRequest request = new ProductRequest("Casa Bruma", "Descripción válida", 1L, "Salta", BigDecimal.TEN, java.util.Set.of());
+        ProductRequest request = request("Casa Bruma", "Salta");
         MockMultipartFile image = new MockMultipartFile("images", "casa.jpg", "image/jpeg", "image".getBytes());
         assertThrows(DuplicateProductException.class, () -> service.create(request, new MockMultipartFile[]{image}));
     }
@@ -50,8 +50,12 @@ class ProductServiceTest {
         Category category = new Category(); category.setTitle("Casas");
         when(categories.findById(1L)).thenReturn(java.util.Optional.of(category));
         when(characteristics.findAllById(any())).thenReturn(List.of());
-        ProductService service = new ProductService(repository, categories, characteristics, tempDir.toString());
-        ProductRequest request = new ProductRequest("Casa Serena", "Descripción válida", 1L, "Mendoza", BigDecimal.TEN, java.util.Set.of());
+        ProductService service = new ProductService(repository, categories, characteristics,
+                mock(com.horizonte.reservation.ReservationService.class),
+                mock(com.horizonte.reservation.ReservationRepository.class),
+                mock(com.horizonte.favorite.FavoriteRepository.class),
+                mock(com.horizonte.review.ReviewRepository.class), tempDir.toString());
+        ProductRequest request = request("Casa Serena", "Mendoza");
         MockMultipartFile invalidFile = new MockMultipartFile("images", "notas.txt", "text/plain", "texto".getBytes());
 
         IllegalArgumentException exception = assertThrows(
@@ -63,6 +67,15 @@ class ProductServiceTest {
     }
 
     private ProductService service(ProductRepository repository) {
-        return new ProductService(repository, mock(CategoryRepository.class), mock(CharacteristicRepository.class), tempDir.toString());
+        return new ProductService(repository, mock(CategoryRepository.class), mock(CharacteristicRepository.class),
+                mock(com.horizonte.reservation.ReservationService.class),
+                mock(com.horizonte.reservation.ReservationRepository.class),
+                mock(com.horizonte.favorite.FavoriteRepository.class),
+                mock(com.horizonte.review.ReviewRepository.class), tempDir.toString());
+    }
+
+    private ProductRequest request(String name, String city) {
+        return new ProductRequest(name, "Descripción válida", 1L, city, BigDecimal.TEN, java.util.Set.of(),
+                "Sin fiestas", "Seguí las indicaciones de seguridad", "Cancelación con 48 horas");
     }
 }

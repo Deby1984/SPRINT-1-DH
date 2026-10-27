@@ -54,7 +54,7 @@ class RequestValidationTest {
     @Test
     void productRejectsBlankTextLowPriceAndMissingCharacteristics() {
         ProductRequest request = new ProductRequest(
-                "  ", "\n", 1L, "   ", BigDecimal.ZERO, Set.of());
+                "  ", "\n", 1L, "   ", BigDecimal.ZERO, Set.of(), " ", " ", " ");
 
         Map<String, Set<String>> errors = errorsFor(request);
 
@@ -63,13 +63,16 @@ class RequestValidationTest {
         assertTrue(errors.get("city").contains("La ciudad es obligatoria."));
         assertTrue(errors.get("price").contains("El precio debe ser de al menos 0,01."));
         assertTrue(errors.get("characteristicIds").contains("Seleccioná al menos una característica."));
+        assertTrue(errors.containsKey("houseRules"));
+        assertTrue(errors.containsKey("healthAndSafety"));
+        assertTrue(errors.containsKey("cancellationPolicy"));
     }
 
     @Test
     void productAcceptsMinimumPriceAndOneCharacteristic() {
         ProductRequest request = new ProductRequest(
                 "Casa del Lago", "Una descripción válida", 1L, "Bariloche",
-                new BigDecimal("0.01"), Set.of(1L));
+                new BigDecimal("0.01"), Set.of(1L), "Sin fiestas", "Seguridad", "Cancelación flexible");
 
         assertEquals(Set.of(), validator.validate(request));
     }

@@ -19,4 +19,13 @@ public record ProductRequest(
         @DecimalMin(value = "0.01", message = "El precio debe ser de al menos 0,01.")
         BigDecimal price,
         @NotEmpty(message = "Seleccioná al menos una característica.")
-        Set<@NotNull(message = "La característica seleccionada no es válida.") Long> characteristicIds) { }
+        Set<@NotNull(message = "La característica seleccionada no es válida.") Long> characteristicIds,
+        @NotBlank(message = "Las normas de la casa son obligatorias.")
+        @Size(max = 1200, message = "Las normas de la casa no pueden superar los 1200 caracteres.")
+        String houseRules,
+        @NotBlank(message = "La información de salud y seguridad es obligatoria.")
+        @Size(max = 1200, message = "La información de salud y seguridad no puede superar los 1200 caracteres.")
+        String healthAndSafety,
+        @NotBlank(message = "La política de cancelación es obligatoria.")
+        @Size(max = 1200, message = "La política de cancelación no puede superar los 1200 caracteres.")
+        String cancellationPolicy) { }

@@ -21,6 +21,9 @@ function product(overrides: Partial<Parameters<typeof validateProduct>[0]> = {})
     city: ' Mar del Plata ',
     price: '25000.50',
     characteristicIds: ['1', '3'],
+    houseRules: ' No se permiten fiestas ',
+    healthAndSafety: ' Respetar las indicaciones ',
+    cancellationPolicy: ' Cancelación gratuita hasta 48 horas antes ',
     images: [image()],
     ...overrides,
   }
@@ -118,7 +121,8 @@ describe('validación de productos', () => {
     expect(checked.valid).toBe(true)
     expect(checked.values).toMatchObject({
       name: 'Casa frente al mar', description: 'Una casa cómoda', categoryId: '2', city: 'Mar del Plata',
-      price: '25000.50', characteristicIds: ['1', '3'], requireImages: true,
+      price: '25000.50', characteristicIds: ['1', '3'], houseRules: 'No se permiten fiestas',
+      healthAndSafety: 'Respetar las indicaciones', cancellationPolicy: 'Cancelación gratuita hasta 48 horas antes', requireImages: true,
     })
   })
 
@@ -139,6 +143,14 @@ describe('validación de productos', () => {
     }))
 
     expect(checked.errors).toMatchObject({ name: expect.any(String), description: expect.any(String), city: expect.any(String) })
+  })
+
+  it('exige las tres políticas y recorta su contenido', () => {
+    const checked = validateProduct(product({ houseRules: ' ', healthAndSafety: ' ', cancellationPolicy: ' ' }))
+
+    expect(checked.errors).toMatchObject({
+      houseRules: expect.any(String), healthAndSafety: expect.any(String), cancellationPolicy: expect.any(String),
+    })
   })
 
   it.each(['', 'texto', 'Infinity', '0', '0.009'])(

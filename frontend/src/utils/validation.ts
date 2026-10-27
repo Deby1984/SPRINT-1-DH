@@ -36,6 +36,9 @@ export type ProductFormValues = {
   city: string
   price: string
   characteristicIds: string[]
+  houseRules: string
+  healthAndSafety: string
+  cancellationPolicy: string
   images: File[]
   requireImages: boolean
 }
@@ -141,6 +144,9 @@ export function validateProduct(input: ProductFormInput): ValidationResult<Produ
     city: input.city.trim(),
     price: String(input.price ?? '').trim(),
     characteristicIds: input.characteristicIds.map(String).map(value => value.trim()).filter(Boolean),
+    houseRules: input.houseRules.trim(),
+    healthAndSafety: input.healthAndSafety.trim(),
+    cancellationPolicy: input.cancellationPolicy.trim(),
     images: Array.from(input.images),
     requireImages: input.requireImages ?? true,
   }
@@ -151,6 +157,12 @@ export function validateProduct(input: ProductFormInput): ValidationResult<Produ
   maxLength(values.description, 'description', 1200, errors)
   required(values.city, 'city', 'La ciudad', errors)
   maxLength(values.city, 'city', 100, errors)
+  required(values.houseRules, 'houseRules', 'Las normas de la casa', errors)
+  maxLength(values.houseRules, 'houseRules', 1200, errors)
+  required(values.healthAndSafety, 'healthAndSafety', 'La información de salud y seguridad', errors)
+  maxLength(values.healthAndSafety, 'healthAndSafety', 1200, errors)
+  required(values.cancellationPolicy, 'cancellationPolicy', 'La política de cancelación', errors)
+  maxLength(values.cancellationPolicy, 'cancellationPolicy', 1200, errors)
 
   const category = Number(values.categoryId)
   if (!values.categoryId) errors.categoryId = 'Seleccioná una categoría.'

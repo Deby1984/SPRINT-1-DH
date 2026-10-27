@@ -13,7 +13,7 @@ public class CategoryService {
     public CategoryService(CategoryRepository repository, ProductRepository products) { this.repository = repository; this.products = products; }
 
     public List<Category> list() { return repository.findAll(Sort.by("title")); }
-    public Category get(Long id) { return repository.findById(id).orElseThrow(() -> new IllegalArgumentException("La categoría seleccionada no existe.")); }
+    public Category get(Long id) { return repository.findById(id).orElseThrow(() -> new CategoryNotFoundException(id)); }
 
     @Transactional public Category create(CategoryRequest request) {
         if (repository.existsByTitleIgnoreCase(request.title().trim())) throw new IllegalArgumentException("Ya existe una categoría con ese título.");
@@ -32,8 +32,7 @@ public class CategoryService {
 
     @Transactional public void delete(Long id) {
         Category category = get(id);
-        boolean inUse = products.findAll().stream().anyMatch(product -> product.getCategoryEntity() != null && product.getCategoryEntity().getId().equals(id));
-        if (inUse) throw new IllegalArgumentException("No se puede eliminar una categoría que tiene productos asociados.");
+        if (products.existsByCategoryEntityId(id)) throw new CategoryInUseException();
         repository.delete(category);
     }
 

@@ -4,6 +4,7 @@ import { categoriesApi, isApiError } from '../api'
 import { FieldError, fieldErrorAttributes } from '../components/FieldError'
 import { Layout } from '../components/layout/Layout'
 import { StatusMessage } from '../components/StatusMessage'
+import { useDialogFocus } from '../hooks/useDialogFocus'
 import type { Category, FieldErrors } from '../types'
 import { errorMessage } from '../utils/product'
 import { validateCategory } from '../utils/validation'
@@ -17,7 +18,12 @@ export function CategoriesPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [removing, setRemoving] = useState<number | null>(null)
+  const [confirming, setConfirming] = useState<Category | null>(null)
   const busy = saving || removing !== null
+  const closeConfirmation = useCallback(() => {
+    if (!busy) setConfirming(null)
+  }, [busy])
+  const confirmationDialogRef = useDialogFocus<HTMLElement>(confirming !== null, closeConfirmation)
 
   const load = useCallback(async () => {
     try {
@@ -65,8 +71,9 @@ export function CategoriesPage() {
   }
 
   async function remove(item: Category) {
-    if (operationLock.current || !confirm(`¿Eliminar la categoría “${item.title}”?`)) return
+    if (operationLock.current) return
     operationLock.current = true
+    setConfirming(null)
     setRemoving(item.id)
     setError('')
     setFieldErrors({})
@@ -116,10 +123,21 @@ export function CategoriesPage() {
           <img src={item.imageUrl} alt="" />
           <div><h3>{item.title}</h3><p>{item.description}</p>
             <button className="text-button" disabled={busy} onClick={() => startEditing(item)}>Editar</button>
-            <button className="delete" disabled={busy} onClick={() => remove(item)}>{removing === item.id ? 'Eliminando…' : 'Eliminar'}</button>
+            <button className="delete" disabled={busy} onClick={() => setConfirming(item)}>{removing === item.id ? 'Eliminando…' : 'Eliminar'}</button>
           </div>
         </article>)}</div>}
       </div>
     </div>
+    {confirming && <div className="modal-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) closeConfirmation() }}>
+      <section ref={confirmationDialogRef} className="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="delete-category-title" tabIndex={-1}>
+        <p className="kicker">ACCIÓN ADMINISTRATIVA</p>
+        <h2 id="delete-category-title">Eliminar “{confirming.title}”</h2>
+        <p>Esta acción quitará la categoría definitivamente. Los productos no se borrarán: si alguno está asociado, el sistema impedirá la eliminación y conservará todos los datos.</p>
+        <div className="modal-actions">
+          <button type="button" className="ghost dark" disabled={busy} onClick={closeConfirmation}>Cancelar</button>
+          <button type="button" className="delete confirm-delete" disabled={busy} onClick={() => void remove(confirming)}>{busy ? 'Eliminando…' : 'Confirmar eliminación'}</button>
+        </div>
+      </section>
+    </div>}
   </section></Layout>
 }

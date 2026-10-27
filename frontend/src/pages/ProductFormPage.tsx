@@ -21,6 +21,10 @@ export function ProductFormPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  function policy(title: string) {
+    return product?.policies.find(item => item.title === title)?.description ?? ''
+  }
+
   useEffect(() => {
     let active = true
     setLoading(true)
@@ -57,6 +61,9 @@ export function ProductFormPage() {
       city: String(form.get('city') ?? ''),
       price: String(form.get('price') ?? ''),
       characteristicIds: form.getAll('characteristicIds').map(String),
+      houseRules: String(form.get('houseRules') ?? ''),
+      healthAndSafety: String(form.get('healthAndSafety') ?? ''),
+      cancellationPolicy: String(form.get('cancellationPolicy') ?? ''),
       images,
       requireImages: !editing,
     })
@@ -69,6 +76,9 @@ export function ProductFormPage() {
     form.set('categoryId', validation.values.categoryId)
     form.set('city', validation.values.city)
     form.set('price', validation.values.price)
+    form.set('houseRules', validation.values.houseRules)
+    form.set('healthAndSafety', validation.values.healthAndSafety)
+    form.set('cancellationPolicy', validation.values.cancellationPolicy)
     form.delete('characteristicIds')
     validation.values.characteristicIds.forEach(value => form.append('characteristicIds', value))
     form.delete('images')
@@ -119,6 +129,21 @@ export function ProductFormPage() {
         <textarea name="description" required maxLength={1200} rows={5} defaultValue={product?.description} disabled={saving} {...fieldErrorAttributes(fieldErrors, 'description')} />
         <FieldError errors={fieldErrors} name="description" />
       </label>
+      <fieldset className="full policy-fields" disabled={saving}>
+        <legend>Políticas del alojamiento</legend>
+        <label>Normas de la casa
+          <textarea name="houseRules" required maxLength={1200} rows={4} defaultValue={policy('Normas de la casa')} {...fieldErrorAttributes(fieldErrors, 'houseRules')} />
+          <FieldError errors={fieldErrors} name="houseRules" />
+        </label>
+        <label>Salud y seguridad
+          <textarea name="healthAndSafety" required maxLength={1200} rows={4} defaultValue={policy('Salud y seguridad')} {...fieldErrorAttributes(fieldErrors, 'healthAndSafety')} />
+          <FieldError errors={fieldErrors} name="healthAndSafety" />
+        </label>
+        <label>Política de cancelación
+          <textarea name="cancellationPolicy" required maxLength={1200} rows={4} defaultValue={policy('Política de cancelación')} {...fieldErrorAttributes(fieldErrors, 'cancellationPolicy')} />
+          <FieldError errors={fieldErrors} name="cancellationPolicy" />
+        </label>
+      </fieldset>
       <fieldset className="full checkbox-field" disabled={saving} {...fieldErrorAttributes(fieldErrors, 'characteristicIds')}>
         <legend>Características (elegí una o más)</legend>
         {characteristics.map(item => <label key={item.id}>

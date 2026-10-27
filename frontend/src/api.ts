@@ -1,4 +1,18 @@
-import type { AuthResult, Category, Characteristic, FieldErrors, Product, ProductFilter, ProductPage, User } from './types'
+import type {
+  AuthResult,
+  Availability,
+  Category,
+  Characteristic,
+  FieldErrors,
+  Product,
+  ProductFilter,
+  ProductPage,
+  Reservation,
+  Review,
+  ReviewEligibility,
+  ReviewSummary,
+  User,
+} from './types'
 
 const TOKEN_KEY = 'horizonte.jwt'
 export const AUTH_INVALIDATED_EVENT = 'horizonte:auth-invalidated'
@@ -70,11 +84,25 @@ async function response<T>(pending: Promise<Response>): Promise<T> {
 
 const json = (method: string, body?: unknown) => ({ method, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
 
+function queryString(values: Record<string, string | number[] | undefined>) {
+  const params = new URLSearchParams()
+  for (const [name, value] of Object.entries(values)) {
+    if (Array.isArray(value)) value.forEach(item => params.append(name, String(item)))
+    else if (value !== undefined && value !== '') params.set(name, value)
+  }
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
 export const productsApi = {
   list: (page = 0) => response<ProductPage>(request(`/api/products?page=${page}&size=10`)),
   random: () => response<Product[]>(request('/api/products/random?limit=10')),
   filter: (ids: number[]) => response<ProductFilter>(request(`/api/products/filter${ids.length ? `?categoryIds=${ids.join(',')}` : ''}`)),
+  cities: (query = '') => response<string[]>(request(`/api/products/cities${queryString({ query })}`)),
+  search: (criteria: { city: string; checkIn: string; checkOut: string; categoryIds?: number[] }) =>
+    response<Product[]>(request(`/api/products/search${queryString(criteria)}`)),
   get: (id: string) => response<Product>(request(`/api/products/${id}`)),
+  availability: (id: string | number) => response<Availability>(request(`/api/products/${id}/availability`)),
   create: (data: FormData) => response<Product>(request('/api/products', { method: 'POST', body: data })),
   update: (id: string, data: FormData) => response<Product>(request(`/api/products/${id}`, { method: 'PUT', body: data })),
   remove: (id: number) => response<void>(request(`/api/products/${id}`, { method: 'DELETE' }))
@@ -104,4 +132,23 @@ export const authApi = {
 export const usersApi = {
   list: () => response<User[]>(request('/api/users')),
   changeRole: (id: number, role: User['role']) => response<User>(request(`/api/users/${id}/role`, json('PATCH', { role })))
+}
+
+export const reservationsApi = {
+  create: (data: { productId: number; checkIn: string; checkOut: string }) =>
+    response<Reservation>(request('/api/reservations', json('POST', data))),
+  mine: () => response<Reservation[]>(request('/api/reservations/me')),
+}
+
+export const favoritesApi = {
+  list: () => response<Product[]>(request('/api/favorites')),
+  add: (productId: number) => response<Product>(request(`/api/favorites/${productId}`, { method: 'PUT' })),
+  remove: (productId: number) => response<void>(request(`/api/favorites/${productId}`, { method: 'DELETE' })),
+}
+
+export const reviewsApi = {
+  list: (productId: number) => response<ReviewSummary>(request(`/api/products/${productId}/reviews`)),
+  eligibility: (productId: number) => response<ReviewEligibility>(request(`/api/reviews/eligibility${queryString({ productId: String(productId) })}`)),
+  create: (data: { productId: number; rating: number; comment: string }) =>
+    response<Review>(request('/api/reviews', json('POST', data))),
 }

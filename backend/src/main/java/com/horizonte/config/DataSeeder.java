@@ -3,6 +3,8 @@ package com.horizonte.config;
 import com.horizonte.category.*;
 import com.horizonte.characteristic.*;
 import com.horizonte.product.*;
+import com.horizonte.reservation.*;
+import com.horizonte.review.*;
 import com.horizonte.user.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -10,12 +12,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 
 @Configuration
 public class DataSeeder {
     @Bean CommandLineRunner seedData(ProductRepository products, CategoryRepository categories,
             CharacteristicRepository characteristics, UserRepository users, PasswordEncoder encoder,
+            ReservationRepository reservations, ReviewRepository reviews,
             @Value("${app.admin.email:}") String adminEmail,
             @Value("${app.admin.password:}") String adminPassword) {
         return args -> {
@@ -52,9 +56,17 @@ public class DataSeeder {
                         product.setCategoryEntity(categoryMap.computeIfAbsent(title, value -> category(categories, value, "Alojamientos seleccionados.", categoryMap.get("Casas").getImageUrl())));
                     }
                     if (product.getCharacteristics().isEmpty()) product.setCharacteristics(defaults);
+                    applyDefaultPolicies(product);
                     products.save(product);
                 });
             }
+
+            products.findAll().forEach(product -> {
+                applyDefaultPolicies(product);
+                products.save(product);
+            });
+
+            seedDemonstrationReservationAndReview(products, users, encoder, reservations, reviews);
 
             if (!adminEmail.isBlank() && !adminPassword.isBlank()) {
                 String email = adminEmail.trim().toLowerCase();
@@ -73,6 +85,61 @@ public class DataSeeder {
     }
     private Product item(String name, String description, Category category, String city, String price, String image, Set<Characteristic> characteristics) {
         Product p = new Product(); p.setName(name); p.setDescription(description); p.setCategoryEntity(category); p.setCity(city); p.setPrice(new BigDecimal(price));
-        p.setImages(List.of(image, image + "&sat=-15", image + "&con=15", image + "&bri=8", image + "&blur=1")); p.setCharacteristics(characteristics); return p;
+        p.setImages(List.of(image, image + "&sat=-15", image + "&con=15", image + "&bri=8", image + "&blur=1")); p.setCharacteristics(characteristics);
+        applyDefaultPolicies(p);
+        return p;
+    }
+
+    private void applyDefaultPolicies(Product product) {
+        if (product.getHouseRules() == null || product.getHouseRules().isBlank()) {
+            product.setHouseRules("Check-in desde las 15:00. No se permiten fiestas ni fumar dentro del alojamiento.");
+        }
+        if (product.getHealthAndSafety() == null || product.getHealthAndSafety().isBlank()) {
+            product.setHealthAndSafety("Respetá las indicaciones de seguridad del anfitrión y cuidá los espacios comunes.");
+        }
+        if (product.getCancellationPolicy() == null || product.getCancellationPolicy().isBlank()) {
+            product.setCancellationPolicy("La cancelación es gratuita hasta 48 horas antes del ingreso.");
+        }
+    }
+
+    private void seedDemonstrationReservationAndReview(
+            ProductRepository products,
+            UserRepository users,
+            PasswordEncoder encoder,
+            ReservationRepository reservations,
+            ReviewRepository reviews) {
+        Product product = products.findAll().stream().findFirst().orElse(null);
+        if (product == null) return;
+
+        AppUser demo = users.findByEmailIgnoreCase("viajera.demo@horizonte.local").orElseGet(() -> {
+            AppUser user = new AppUser();
+            user.setFirstName("Viajera");
+            user.setLastName("Demo");
+            user.setEmail("viajera.demo@horizonte.local");
+            user.setPasswordHash(encoder.encode(UUID.randomUUID().toString()));
+            user.setRole(Role.USER);
+            return users.save(user);
+        });
+
+        LocalDate today = LocalDate.now();
+        if (!reservations.existsByUserIdAndProductIdAndCheckOutLessThanEqual(demo.getId(), product.getId(), today)) {
+            Reservation reservation = new Reservation();
+            reservation.setUser(demo);
+            reservation.setProduct(product);
+            reservation.setCheckIn(today.minusDays(12));
+            reservation.setCheckOut(today.minusDays(9));
+            reservations.save(reservation);
+        }
+        if (!reviews.existsByUserIdAndProductId(demo.getId(), product.getId())) {
+            Review review = new Review();
+            review.setUser(demo);
+            review.setProduct(product);
+            review.setRating(5);
+            review.setComment("Una estadía muy cómoda y tranquila.");
+            reviews.save(review);
+            product.setAverageRating(new BigDecimal("5.0"));
+            product.setReviewCount(1);
+            products.save(product);
+        }
     }
 }

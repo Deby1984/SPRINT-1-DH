@@ -1,6 +1,15 @@
 /** @vitest-environment jsdom */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, AUTH_INVALIDATED_EVENT, authApi, tokenStore } from './api'
+import {
+  ApiError,
+  AUTH_INVALIDATED_EVENT,
+  authApi,
+  favoritesApi,
+  productsApi,
+  reservationsApi,
+  reviewsApi,
+  tokenStore,
+} from './api'
 
 function unauthorized() {
   return new Response(JSON.stringify({ message: 'La sesión ya no es válida.' }), {
@@ -100,5 +109,44 @@ describe('errores de la API', () => {
 
     expect(error).toBeInstanceOf(ApiError)
     expect(error).toMatchObject({ status: 422, fieldErrors: { email: 'Correo inválido' } })
+  })
+})
+
+describe('contratos HTTP del Sprint 3', () => {
+  afterEach(() => {
+    sessionStorage.clear()
+    vi.unstubAllGlobals()
+  })
+
+  it('construye búsqueda, reserva, favoritos y valoraciones con los métodos esperados', async () => {
+    tokenStore.set('token-prueba')
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const body = url.includes('/search') ? '[]'
+        : url.includes('/eligibility') ? '{"eligible":false,"message":"Pendiente"}'
+          : '{}'
+      return Promise.resolve(new Response(init?.method === 'DELETE' ? null : body, {
+        status: init?.method === 'DELETE' ? 204 : 200,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await productsApi.search({ city: 'San Martín', checkIn: '2026-11-10', checkOut: '2026-11-12', categoryIds: [2, 4] })
+    await reservationsApi.create({ productId: 7, checkIn: '2026-11-10', checkOut: '2026-11-12' })
+    await favoritesApi.add(7)
+    await favoritesApi.remove(7)
+    await reviewsApi.eligibility(7)
+    await reviewsApi.create({ productId: 7, rating: 5, comment: 'Excelente' })
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/products/search?city=San+Mart%C3%ADn&checkIn=2026-11-10&checkOut=2026-11-12&categoryIds=2&categoryIds=4')
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: 'POST', body: JSON.stringify({ productId: 7, checkIn: '2026-11-10', checkOut: '2026-11-12' }) })
+    expect(fetchMock.mock.calls[2][1]).toMatchObject({ method: 'PUT' })
+    expect(fetchMock.mock.calls[3][1]).toMatchObject({ method: 'DELETE' })
+    expect(fetchMock.mock.calls[4][0]).toBe('/api/reviews/eligibility?productId=7')
+    expect(fetchMock.mock.calls[5][1]).toMatchObject({ method: 'POST', body: JSON.stringify({ productId: 7, rating: 5, comment: 'Excelente' }) })
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer token-prueba')
+    }
   })
 })

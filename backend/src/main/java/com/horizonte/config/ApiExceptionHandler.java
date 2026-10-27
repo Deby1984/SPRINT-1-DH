@@ -1,6 +1,11 @@
 package com.horizonte.config;
 
 import com.horizonte.product.*;
+import com.horizonte.category.CategoryInUseException;
+import com.horizonte.category.CategoryNotFoundException;
+import com.horizonte.reservation.ReservationConflictException;
+import com.horizonte.review.DuplicateReviewException;
+import com.horizonte.review.ReviewNotAllowedException;
 import com.horizonte.user.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.*;
@@ -26,9 +31,20 @@ public class ApiExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, ex.getMessage(), request, Map.of());
     }
 
-    @ExceptionHandler(ProductNotFoundException.class)
-    ResponseEntity<ApiError> notFound(ProductNotFoundException ex, HttpServletRequest request) {
+    @ExceptionHandler({ProductNotFoundException.class, CategoryNotFoundException.class})
+    ResponseEntity<ApiError> notFound(RuntimeException ex, HttpServletRequest request) {
         return response(HttpStatus.NOT_FOUND, ex.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler({ReservationConflictException.class, DuplicateReviewException.class,
+            CategoryInUseException.class, ProductInUseException.class})
+    ResponseEntity<ApiError> domainConflict(RuntimeException ex, HttpServletRequest request) {
+        return response(HttpStatus.CONFLICT, ex.getMessage(), request, Map.of());
+    }
+
+    @ExceptionHandler(ReviewNotAllowedException.class)
+    ResponseEntity<ApiError> forbidden(ReviewNotAllowedException ex, HttpServletRequest request) {
+        return response(HttpStatus.FORBIDDEN, ex.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler(UnauthorizedException.class)
